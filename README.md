@@ -1,28 +1,55 @@
 # Cloudflare Turnstile Integration
 
-**Cloudflare Turnstile Integration** é um plugin WordPress que adiciona o CAPTCHA do Cloudflare Turnstile aos formulários de login e de comentários para aumentar a segurança.
+A lightweight WordPress plugin that adds [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) to the login and comment forms. No tracking, no ads, one file.
 
-## Características
+[Português abaixo](#português)
 
-- Adiciona Cloudflare Turnstile CAPTCHA ao formulário de login do WordPress.
-- Adiciona Cloudflare Turnstile CAPTCHA ao formulário de comentários do WordPress.
+## Features
+- Turnstile on the WordPress login form (`wp-login.php`).
+- Turnstile on the comment form for visitors.
+- Settings page under **Settings > Turnstile Settings**.
 
-## Instalação
+## Installation
+1. Download this repository as a ZIP (or clone it) into `/wp-content/plugins/cloudflare-turnstile-integration/`.
+2. Activate **Cloudflare Turnstile Integration** in **Plugins**.
+3. In the Cloudflare dashboard, open **Turnstile**, add your site and copy the **Site Key** and **Secret Key**.
+4. Paste both keys in **Settings > Turnstile Settings** and save.
 
-1. Baixe o plugin ou clone o repositório.
-2. Faça o upload da pasta `cloudflare-turnstile` para o diretório `/wp-content/plugins/`.
-3. Ative o plugin através do menu "Plugins" no WordPress.
+Tip: before logging out, open `wp-login.php` in a private window and confirm the widget appears and login works.
 
-## Configuração
+## Requirements
+WordPress 5.0+ and PHP 7.4+.
 
-1. Navegue até `Configurações > Turnstile Settings` no painel de administração do WordPress.
-2. Insira suas chaves de site e chave secreta do Cloudflare Turnstile e clique em "Salvar alterações".
+## License
+MIT. See [LICENSE](LICENSE).
 
-## Licença
+## Author
+Guga Venancio
 
-Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+---
 
-## Autor
+## Português
 
-**Super Plural**  
-Website: [https://superplural.com](https://superplural.com)
+Plugin leve para WordPress que adiciona o [Cloudflare Turnstile](https://www.cloudflare.com/pt-br/products/turnstile/) aos formulários de login e de comentários. Sem rastreamento, sem anúncios, um arquivo só.
+
+### Recursos
+- Turnstile no formulário de login do WordPress (`wp-login.php`).
+- Turnstile no formulário de comentários para visitantes.
+- Página de configuração em **Configurações > Turnstile Settings**.
+
+### Instalação
+1. Baixe este repositório em ZIP (ou clone) para `/wp-content/plugins/cloudflare-turnstile-integration/`.
+2. Ative **Cloudflare Turnstile Integration** em **Plugins**.
+3. No painel da Cloudflare, abra **Turnstile**, adicione seu site e copie a **Site Key** e a **Secret Key**.
+4. Cole as duas chaves em **Configurações > Turnstile Settings** e salve.
+
+Dica: antes de sair da conta, abra `wp-login.php` numa janela anônima e confira se o widget aparece e o login funciona.
+
+### Requisitos
+WordPress 5.0+ e PHP 7.4+.
+
+### Licença
+MIT. Veja [LICENSE](LICENSE).
+
+### Autor
+Guga Venancio
