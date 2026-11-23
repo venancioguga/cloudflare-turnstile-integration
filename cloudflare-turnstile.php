@@ -2,9 +2,9 @@
 /*
 Plugin Name: Cloudflare Turnstile Integration
 Description: Adds Cloudflare Turnstile CAPTCHA to WordPress login and comment forms.
-Version: 1.1
-Author: Super Plural
-Author URI: https://superplural.com
+Version: 1.2
+Author: Guga Venancio
+License: MIT
 */
 
 // Exit if accessed directly
@@ -77,7 +77,7 @@ function turnstile_site_key_render() {
 
 function turnstile_secret_key_render() {
     $secret_key = get_option('turnstile_secret_key');
-    echo "<input type='text' name='turnstile_secret_key' value='" . esc_attr($secret_key) . "'>";
+    echo "<input type='password' autocomplete='off' name='turnstile_secret_key' value='" . esc_attr($secret_key) . "'>";
 }
 
 // Load Turnstile scripts
@@ -89,28 +89,55 @@ add_action('login_enqueue_scripts', 'load_turnstile_scripts');
 
 // Add Turnstile to comment form
 function add_turnstile_to_comment_form() {
+    if (!turnstile_is_configured()) {
+        return;
+    }
     $site_key = get_option('turnstile_site_key');
     echo '<div class="cf-turnstile" data-sitekey="' . esc_attr($site_key) . '"></div>';
 }
 add_action('comment_form_after_fields', 'add_turnstile_to_comment_form');
 
-// Validate Turnstile response for comments
-function validate_turnstile_comment($commentdata) {
-    $response = sanitize_text_field($_POST['cf-turnstile-response']);
-    $remoteip = $_SERVER['REMOTE_ADDR'];
+// True when both keys are saved. Without keys the plugin stays inactive (prevents locking everyone out).
+function turnstile_is_configured() {
+    return get_option('turnstile_site_key') && get_option('turnstile_secret_key');
+}
+
+// Asks Cloudflare whether the token sent by the form is valid.
+function turnstile_verify_token() {
+    $response = isset($_POST['cf-turnstile-response']) ? sanitize_text_field(wp_unslash($_POST['cf-turnstile-response'])) : '';
+    if ($response === '') {
+        return false;
+    }
 
     $verify = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-        'body' => [
-            'secret' => get_option('turnstile_secret_key'),
+        'timeout' => 10,
+        'body'    => [
+            'secret'   => get_option('turnstile_secret_key'),
             'response' => $response,
-            'remoteip' => $remoteip
-        ]
+            'remoteip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
+        ],
     ]);
 
-    $result = json_decode(wp_remote_retrieve_body($verify));
+    if (is_wp_error($verify)) {
+        return false;
+    }
 
-    if (!$result->success) {
-        wp_die('CAPTCHA validation failed. Please try again.');
+    $result = json_decode(wp_remote_retrieve_body($verify));
+    return is_object($result) && !empty($result->success);
+}
+
+// Validate Turnstile response for comments (visitors only: logged-in users never see the widget)
+function validate_turnstile_comment($commentdata) {
+    if (!turnstile_is_configured() || is_user_logged_in() || is_admin()) {
+        return $commentdata;
+    }
+    // Pingbacks and trackbacks have no form
+    if (!empty($commentdata['comment_type']) && in_array($commentdata['comment_type'], ['pingback', 'trackback'], true)) {
+        return $commentdata;
+    }
+
+    if (!turnstile_verify_token()) {
+        wp_die(esc_html__('CAPTCHA validation failed. Please go back and try again.'), '', ['response' => 403, 'back_link' => true]);
     }
 
     return $commentdata;
@@ -119,32 +146,30 @@ add_filter('preprocess_comment', 'validate_turnstile_comment');
 
 // Add Turnstile to login form
 function add_turnstile_to_login_form() {
+    if (!turnstile_is_configured()) {
+        return;
+    }
     $site_key = get_option('turnstile_site_key');
     echo '<div class="cf-turnstile" data-sitekey="' . esc_attr($site_key) . '"></div>';
 }
 add_action('login_form', 'add_turnstile_to_login_form');
 
-// Validate Turnstile response for login
-function validate_turnstile_login($user, $username, $password) {
-    $response = sanitize_text_field($_POST['cf-turnstile-response']);
-    $remoteip = $_SERVER['REMOTE_ADDR'];
+// Validate Turnstile response for login (only the wp-login.php form; XML-RPC, REST and app passwords are untouched)
+function validate_turnstile_login($user, $password) {
+    if (is_wp_error($user) || !turnstile_is_configured()) {
+        return $user;
+    }
+    if ((defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) || (defined('REST_REQUEST') && REST_REQUEST)) {
+        return $user;
+    }
+    if (!isset($GLOBALS['pagenow']) || $GLOBALS['pagenow'] !== 'wp-login.php') {
+        return $user;
+    }
 
-    $verify = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-        'body' => [
-            'secret' => get_option('turnstile_secret_key'),
-            'response' => $response,
-            'remoteip' => $remoteip
-        ]
-    ]);
-
-    $result = json_decode(wp_remote_retrieve_body($verify));
-
-    if (!$result->success) {
+    if (!turnstile_verify_token()) {
         return new WP_Error('captcha_invalid', __('CAPTCHA validation failed. Please try again.'));
     }
 
     return $user;
 }
-add_filter('wp_authenticate_user', 'validate_turnstile_login', 10, 3);
-
-?>
+add_filter('wp_authenticate_user', 'validate_turnstile_login', 10, 2);
